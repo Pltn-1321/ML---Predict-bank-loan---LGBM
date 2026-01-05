@@ -1,0 +1,14 @@
+{
+    "best_model_name": "LightGBM_Baseline_FINAL_MODEL",
+    "best_model_run_id": "f9d4aadcd9ac4954bb0d30f1041a2e67",
+    "optimal_threshold": 0.5145454545454545,
+    "cost_fn": 10,
+    "cost_fp": 1,
+    "business_cost_optimal": 0.4284432101615877,
+    "n_features": 419,
+    "n_train_samples": 307511,
+    "class_distribution": {
+        "0": 282686,
+        "1": 24825
+    }
+}
