@@ -83,8 +83,9 @@ OC6_MLOPS/
 │   ├── feature_names.json         # 419 features attendues
 │   └── model_metadata.json        # Seuil, coûts, metadata
 ├── monitoring/                    # Dashboard Streamlit + drift
-│   ├── dashboard.py               # Dashboard 4 onglets (scores, latence, drift, modèle)
-│   └── drift.py                   # Simulation drift + KS test
+│   ├── dashboard.py               # Dashboard 5 onglets (prediction, scores, latence, drift, modèle)
+│   ├── drift.py                   # Simulation drift + KS test
+│   └── predictions_log.jsonl      # Log des prédictions (JSON Lines, généré par l'API)
 ├── tests/                         # Tests unitaires (pytest, 19 tests)
 │   ├── test_api.py                # Tests endpoints API (7 tests)
 │   ├── test_predict.py            # Tests logique de prédiction (4 tests)
@@ -97,7 +98,8 @@ OC6_MLOPS/
 │   ├── 02_preprocessing_and_feature_engineering.ipynb
 │   └── 03_modeling_with_MLFLOW.ipynb
 ├── scripts/                       # Scripts utilitaires
-│   └── export_model.py            # Export depuis MLflow → artifacts/
+│   ├── export_model.py            # Export depuis MLflow → artifacts/
+│   └── generate_sample_predictions.py  # Génère des prédictions de démo (500 lignes)
 ├── .github/workflows/ci-cd.yml   # GitHub Actions (test → build → deploy)
 ├── Dockerfile                     # Image Docker production
 ├── docker-compose.yml             # API + Dashboard local
@@ -312,12 +314,37 @@ curl -X POST http://localhost:8000/predict \
 
 ## 📈 **Dashboard Monitoring**
 
-Dashboard Streamlit avec 4 onglets :
+Dashboard Streamlit avec 5 onglets :
 
-1. **Scores & Décisions** — Distribution des probabilités, taux de refus, répartition approuvés/refusés
-2. **Performance API** — Latence (P50, P95, max), évolution temporelle
-3. **Data Drift** — Simulation de drift (graduel/soudain/feature shift), test KS par feature, distributions comparées
-4. **Modèle** — Metadata, seuil optimal, coûts métier, configuration complète
+1. **Prediction** — Scoring client interactif (par ID ou saisie manuelle de features)
+2. **Scores & Décisions** — Distribution des probabilités, taux de refus, répartition approuvés/refusés
+3. **Performance API** — Latence (P50, P95, max), évolution temporelle
+4. **Data Drift** — Simulation de drift (graduel/soudain/feature shift), test KS par feature, rapport Evidently AI
+5. **Modèle** — Metadata, seuil optimal, coûts métier, configuration complète
+
+### Log des prédictions (`monitoring/predictions_log.jsonl`)
+
+Chaque appel à `/predict` est enregistré au format **JSON Lines** dans `monitoring/predictions_log.jsonl`. Chaque ligne contient :
+
+| Champ | Description |
+|-------|-------------|
+| `timestamp` | Horodatage UTC (ISO 8601) |
+| `SK_ID_CURR` | Identifiant client |
+| `probability` | Probabilité de défaut (0-1) |
+| `prediction` | Décision binaire (0=approved, 1=refused) |
+| `inference_time_ms` | Temps d'inférence du modèle en ms |
+
+Ce fichier alimente les onglets **Scores & Décisions** et **Performance API** du dashboard.
+
+### Générer des données de démo
+
+Pour tester le dashboard sans lancer l'API, un script génère 500 prédictions réalistes :
+
+```bash
+uv run python scripts/generate_sample_predictions.py
+```
+
+Le script simule une distribution bimodale (92% bons clients, 8% défauts) avec des timestamps répartis sur 48h et des latences réalistes (~3ms).
 
 ---
 
