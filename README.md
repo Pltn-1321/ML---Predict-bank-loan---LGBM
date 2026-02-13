@@ -3,9 +3,12 @@
 ## Formation AI Engineer 2026 - Projet OC6
 
 [![MLFlow](https://img.shields.io/badge/MLFlow-Tracking-blue.svg)](https://mlflow.org/)
-[![Python](https://img.shields.io/badge/Python-3.10+-green.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-API-009688.svg)](https://fastapi.tiangolo.com/)
+[![Python](https://img.shields.io/badge/Python-3.11+-green.svg)](https://www.python.org/)
 [![Scikit-learn](https://img.shields.io/badge/Scikit-learn-ML-orange.svg)](https://scikit-learn.org/)
 [![LightGBM](https://img.shields.io/badge/LightGBM-Boosting-yellow.svg)](https://lightgbm.readthedocs.io/)
+[![Docker](https://img.shields.io/badge/Docker-Container-2496ED.svg)](https://www.docker.com/)
+[![CI/CD](https://img.shields.io/badge/GitHub_Actions-CI%2FCD-2088FF.svg)](https://github.com/features/actions)
 
 ### 📊 **Résumé Exécutif**
 
@@ -13,40 +16,54 @@
 
 **Défi principal** : Dataset massivement déséquilibré (91.9% bons clients vs 8.1% défauts → ratio **11.4:1**) + 8 tables relationnelles à agréger.
 
-**Solution proposée** : Pipeline MLOps complet avec **innovations méthodologiques** :
+**Solution proposée** : Pipeline MLOps complet, de l'entraînement au déploiement :
 
 - Agrégation hiérarchique de 57M+ lignes → 305 features
 - **Feature "Has_History"** : capture l'absence d'historique (info critique)
 - **Imputation stratégique** : 5 approches selon sémantique métier
-- **Score métier personnalisé** : FN = 10× FP (priorité recall - consigne OpenClassrooms)
+- **Score métier personnalisé** : FN = 10× FP (priorité recall)
 - **MLFlow tracking complet** : baselines, tuning, seuil optimal
+- **API FastAPI** de scoring en production avec monitoring Streamlit
+- **CI/CD GitHub Actions** : tests automatisés, build Docker, déploiement Render
 
-**Résultats** : Modèle LightGBM optimisé avec coût métier minimisé, prêt pour production.
+**Résultats** : Modèle LightGBM (Val AUC = 0.7852, Business Cost = 0.4907), seuil optimal 0.494, déployé via API REST avec dashboard de monitoring.
 
 ---
 
 ## 🎯 **Objectifs du Projet**
 
+### Partie 1 — Modélisation
 1. **Ingénierie des features avancées** à partir de données relationnelles complexes
 2. **Pipeline preprocessing robuste** gérant intelligemment les NaN métier
-3. **Modélisation orientée business** avec score coût asymétrique
+3. **Modélisation orientée business** avec score coût asymétrique (FN=10, FP=1)
 4. **MLOps** : tracking expérimentations, reproductibilité, model registry
-5. **Optimisation du seuil de décision** pour maximiser le recall métier
+5. **Optimisation du seuil de décision** pour minimiser le coût métier
+
+### Partie 2 — Déploiement
+6. **API REST** de scoring via FastAPI
+7. **Tests unitaires** automatisés (pytest, 19 tests)
+8. **Dashboard de monitoring** Streamlit (scores, latence, data drift)
+9. **Containerisation Docker** pour la production
+10. **Pipeline CI/CD** GitHub Actions (test → build → deploy sur Render)
 
 ---
 
 ## 🏗️ **Architecture du Pipeline MLOps**
 
 ```
-📥 Données Brutes (8 CSV)
+📥 Données Brutes (8 CSV, 57M+ lignes)
     ↓ Agrégation Hiérarchique (Notebook 01)
 📊 train_aggregated.csv (307k × 305 features)
     ↓ Preprocessing + Feature Engineering (Notebook 02)
-⚙️ train_preprocessed.csv (307k × 265 features, 0 NaN, scalé)
+⚙️ train_preprocessed.csv (307k × 419 features, 0 NaN, scalé)
     ↓ Modeling + MLFlow (Notebook 03)
-🚀 Meilleur Modèle LightGBM (tracké MLFlow)
-    ↓ Seuil Optimal + Production Ready
-📤 submission.csv (prédictions Kaggle)
+🚀 Meilleur Modèle LightGBM (tracké MLFlow, seuil 0.494)
+    ↓ Export modèle (scripts/export_model.py)
+📦 artifacts/ (model.pkl, scaler.pkl, feature_names.json)
+    ↓ API FastAPI + Docker
+🌐 API REST /predict → probabilité + décision (APPROVED/REFUSED)
+    ↓ CI/CD GitHub Actions
+☁️ Déploiement automatique sur Render
 ```
 
 ---
@@ -55,31 +72,38 @@
 
 ```
 OC6_MLOPS/
-├── data/                          # Données brutes et traitées
-│   ├── application_train.csv      # Table principale (307k lignes)
-│   ├── bureau.csv                 # Historique crédits externes (1.7M)
-│   ├── train_aggregated.csv       # Après Notebook 01 (305 features)
-│   ├── train_preprocessed.csv     # Après Notebook 02 (265 features)
-│   └── submission.csv             # Prédictions finales
+├── api/                           # API de scoring (FastAPI)
+│   ├── app.py                     # Routes (/health, /predict, /model-info)
+│   ├── predict.py                 # Chargement modèle + inférence
+│   ├── schemas.py                 # Schémas Pydantic request/response
+│   └── config.py                  # Configuration (seuil, chemins)
+├── artifacts/                     # Modèle exporté (commité dans git)
+│   ├── model.pkl                  # LightGBM (joblib)
+│   ├── scaler.pkl                 # StandardScaler
+│   ├── feature_names.json         # 419 features attendues
+│   └── model_metadata.json        # Seuil, coûts, metadata
+├── monitoring/                    # Dashboard Streamlit + drift
+│   ├── dashboard.py               # Dashboard 4 onglets (scores, latence, drift, modèle)
+│   └── drift.py                   # Simulation drift + KS test
+├── tests/                         # Tests unitaires (pytest, 19 tests)
+│   ├── test_api.py                # Tests endpoints API (7 tests)
+│   ├── test_predict.py            # Tests logique de prédiction (4 tests)
+│   └── test_drift.py              # Tests détection de drift (8 tests)
+├── src/                           # Code modulaire réutilisable
+│   ├── data_processing.py         # Alignement features
+│   └── metrics.py                 # Score métier (FN=10, FP=1)
 ├── notebooks/                     # Pipeline en 3 étapes
 │   ├── 01_EDA.ipynb               # EDA + Agrégation
 │   ├── 02_preprocessing_and_feature_engineering.ipynb
 │   └── 03_modeling_with_MLFLOW.ipynb
-├── notebooks/charts_eda/          # Visualisations EDA
-│   ├── graphique_1_age_distribution.png
-│   ├── graphique_2_correlations.png
-│   └── graphique_5_historique_bureau.png
-├── src/                           # Code modulaire (production-ready)
-│   ├── __init__.py
-│   ├── data_processing.py
-│   ├── feature_engineering.py
-│   ├── metrics.py
-│   └── modeling.py
-├── mlruns/                        # MLFlow tracking automatique
-├── models/                        # Modèles sauvegardés
-├── pyproject.toml                 # Dépendances (uv/pip)
-├── uv.lock                        # Lockfile uv
-└── README.md                      # Ce fichier
+├── scripts/                       # Scripts utilitaires
+│   └── export_model.py            # Export depuis MLflow → artifacts/
+├── .github/workflows/ci-cd.yml   # GitHub Actions (test → build → deploy)
+├── Dockerfile                     # Image Docker production
+├── docker-compose.yml             # API + Dashboard local
+├── main.py                        # Point d'entrée uvicorn
+├── pyproject.toml                 # Dépendances (uv)
+└── README.md
 ```
 
 ---
@@ -88,7 +112,7 @@ OC6_MLOPS/
 
 ### Prérequis
 
-- Python 3.10+
+- Python 3.11+
 - [uv](https://docs.astral.sh/uv/) (recommandé) ou pip
 
 ### Installation
@@ -99,23 +123,46 @@ cd OC6_MLOPS
 uv sync          # ou pip install -e .
 ```
 
-### Lancer le Pipeline Complet
+### Lancer l'API
 
 ```bash
-# 1. EDA + Agrégation
-jupyter notebook notebooks/01_EDA.ipynb
-
-# 2. Preprocessing + Features
-jupyter notebook notebooks/02_preprocessing_and_feature_engineering.ipynb
-
-# 3. Modeling + MLFlow
-jupyter notebook notebooks/03_modeling_with_MLFLOW.ipynb
-
-# Visualiser les expériences
-mlflow ui          # http://localhost:5000
+uv run python main.py
+# API disponible sur http://localhost:8000
+# Documentation Swagger : http://localhost:8000/docs
 ```
 
-**Dépendances principales** : `pandas`, `scikit-learn`, `lightgbm`, `mlflow`, `matplotlib`, `seaborn`, `joblib`
+### Lancer les tests
+
+```bash
+uv run pytest tests/ -v
+```
+
+### Lancer le dashboard de monitoring
+
+```bash
+uv run streamlit run monitoring/dashboard.py
+# Dashboard disponible sur http://localhost:8501
+```
+
+### Lancer avec Docker
+
+```bash
+# API seule
+docker build -t credit-scoring .
+docker run -p 8000:8000 credit-scoring
+
+# API + Dashboard
+docker compose up
+```
+
+### Lancer le pipeline notebooks
+
+```bash
+jupyter notebook notebooks/01_EDA.ipynb
+jupyter notebook notebooks/02_preprocessing_and_feature_engineering.ipynb
+jupyter notebook notebooks/03_modeling_with_MLFLOW.ipynb
+mlflow ui   # http://localhost:5000
+```
 
 ---
 
@@ -153,9 +200,9 @@ Outputs : train_aggregated.csv + test_aggregated.csv
 - Créer features métier prédictives
 - Préparer données scalées pour ML
 
-**🚀 Innovations Clés** :
+**Innovations Clés** :
 
-1. **Feature "Has_History" (INNOVATION PROPRIA)** :
+1. **Feature "Has_History"** :
 
    ```
    HAS_BUREAU, HAS_PREV_APP, HAS_CREDIT_CARD, HAS_POS_CASH, HAS_INSTALLMENTS
@@ -172,20 +219,16 @@ Outputs : train_aggregated.csv + test_aggregated.csv
    | Autres | Médiane | - | Défaut conservateur |
 
 3. **Feature Engineering Métier (11 nouvelles)** :
-   ```
-   💰 CREDIT_INCOME_RATIO (règle 33%)
-   💳 ANNUITY_INCOME_RATIO (capacité remboursement)
-   👴 AGE_YEARS, 👷 EMPLOYMENT_YEARS
-   📊 EXT_SOURCE_MEAN/PROD (scores agrégés)
-   👨‍👩‍👧 INCOME_PER_PERSON, CHILDREN_RATIO
-   🏦 BUREAU_DEBT_INCOME_RATIO
-   ```
+   - CREDIT_INCOME_RATIO, ANNUITY_INCOME_RATIO
+   - AGE_YEARS, EMPLOYMENT_YEARS
+   - EXT_SOURCE_MEAN, EXT_SOURCE_PROD
+   - INCOME_PER_PERSON, CHILDREN_RATIO
+   - BUREAU_DEBT_INCOME_RATIO
 
 **Résultats** :
 
 ```
-307k × 265 features | 0 NaN | 0 Inf | Scalé (mean=0, std=1)
--45 colonnes (>80% NaN supprimées)
+307k × 419 features | 0 NaN | 0 Inf | Scalé (mean=0, std=1)
 Scaler.pkl sauvegardé (production-ready)
 ```
 
@@ -193,84 +236,127 @@ Scaler.pkl sauvegardé (production-ready)
 
 **Objectifs** :
 
-- Baselines + tuning
-- Score métier asymétrique
-- Tracking reproductible
+- Baselines + tuning avec tracking MLFlow
+- Score métier asymétrique (FN=10, FP=1)
+- Optimisation du seuil de décision
 
-**🚀 Innovations** :
+**Approche** :
 
-1. **Score Métier Personnalisé** (consigne OpenClassrooms) :
+1. **Score Métier Personnalisé** :
 
    ```python
    coût_total = (FN × 10) + FP    # Recall prioritaire
    ```
 
-2. **3 Baselines Comparées** :
+2. **5 Baselines Comparées** :
    | Modèle | Avantages | CV Business Cost |
    |------------------|------------------------|------------------|
-   | Logistic Reg | Linéaire, rapide | Baseline |
+   | Logistic Reg (balanced) | Linéaire, rapide | Baseline |
+   | Logistic Reg (non-balanced) | Référence | Pire |
    | Random Forest | Non-linéaire | Moyen |
-   | **LightGBM** | **Gradient Boosting** | **Meilleur** |
+   | XGBoost | Gradient Boosting | Bon |
+   | **LightGBM** | **Gradient Boosting, rapide** | **Meilleur** |
 
-3. **Hyperparameter Tuning** : GridSearchCV (27 combinaisons)
-4. **Seuil Optimal** : ~0.3-0.4 (vs 0.5 défaut) → +X% recall
-5. **MLFlow Complet** :
-   - Paramètres, métriques CV/train
-   - Matrices confusion visualisées
-   - Modèles loggés + artifacts
+3. **Hyperparameter Tuning** : GridSearchCV sur LightGBM
+4. **Seuil Optimal** : 0.494 (vs 0.5 défaut) → minimise le coût métier
+5. **Évaluation sur validation set** : AUC = 0.7852, Business Cost = 0.4907
+6. **MLFlow Complet** : paramètres, métriques, matrices confusion, modèles loggés, model registry
 
-**Outputs** :
+---
+
+## 📊 **Métriques Clés**
 
 ```
-submission.csv (Kaggle-ready)
-mlruns/ (tracking)
-model_metadata.json
+Dataset : 307k train | 48k test | 11.4:1 imbalance
+Features : 122 orig → 305 agrégées → 419 finales
+Meilleur Modèle : LightGBM Tuned
+Seuil Optimal : 0.494 (vs 0.5 défaut)
+Val AUC : 0.7852
+Val Business Cost : 0.4907
+Tests : 19/19 passent
 ```
 
 ---
 
-## 💡 **Points Forts Méthodologiques (Jury)**
+## 🌐 **API de Scoring**
+
+L'API FastAPI expose le modèle en production :
+
+| Endpoint | Méthode | Description |
+|-----------|---------|-------------|
+| `/health` | GET | Status de l'API + modèle chargé |
+| `/predict` | POST | Prédiction de scoring (proba + décision) |
+| `/model-info` | GET | Metadata du modèle |
+
+**Exemple de requête :**
+
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{"SK_ID_CURR": 100001, "features": {"AMT_CREDIT": 0.5, "AMT_ANNUITY": -0.3}}'
+```
+
+**Réponse :**
+```json
+{
+  "SK_ID_CURR": 100001,
+  "probability": 0.38,
+  "prediction": 0,
+  "threshold": 0.494,
+  "decision": "APPROVED",
+  "inference_time_ms": 2.5
+}
+```
+
+---
+
+## 📈 **Dashboard Monitoring**
+
+Dashboard Streamlit avec 4 onglets :
+
+1. **Scores & Décisions** — Distribution des probabilités, taux de refus, répartition approuvés/refusés
+2. **Performance API** — Latence (P50, P95, max), évolution temporelle
+3. **Data Drift** — Simulation de drift (graduel/soudain/feature shift), test KS par feature, distributions comparées
+4. **Modèle** — Metadata, seuil optimal, coûts métier, configuration complète
+
+---
+
+## 🔄 **CI/CD**
+
+Pipeline GitHub Actions en 3 étapes :
+1. **Test** — `ruff check` (linting) + `pytest` (19 tests unitaires)
+2. **Build** — `docker build` + test `/health` dans le container
+3. **Deploy** — Déploiement automatique sur Render (push main uniquement)
+
+---
+
+## 💡 **Points Forts Méthodologiques**
 
 | Innovation                | Impact Métier/Business                     |
 | ------------------------- | ------------------------------------------ |
 | **Has_History features**  | "Nouveau client" = risque → info critique  |
 | **Imputation sémantique** | Respecte logique bancaire (0€=pas crédit)  |
 | **Score FN=10×FP**        | Recall prioritaire (perte >> manque gain)  |
-| **Seuil optimisé**        | +X% performance coût métier                |
+| **Seuil 0.494**           | Minimise le coût métier vs 0.5 par défaut  |
 | **No Data Leakage**       | Scaler fit train only                      |
 | **MLFlow end-to-end**     | Reproductible, auditable, production-ready |
+| **API + monitoring**      | Modèle déployé avec suivi en production    |
+| **CI/CD automatisé**      | Tests + build + deploy à chaque push       |
 
-**Gestion Déséquilibre** : `class_weight=balanced` + score asymétrique + seuil optimisé.
-
----
-
-## 📊 **Métriques Clés (Placeholders - à finaliser)**
-
-```
-Dataset : 307k train | 48k test | 11.4:1 imbalance
-Features: 122 orig → 305 agrégées → 265 finales
-NaN : 82% → 0%
-Meilleur Modèle : LightGBM Tuned
-CV Business Cost : [X.XX] ± [X.XX]
-Train AUC : [XX.X]%
-Seuil Optimal : [X.XX] (vs 0.5)
-Amélioration seuil : [+X.X]%
-```
 ---
 
 ## 👨‍💻 **Auteur & Licence**
 
-**Auteur** : Pierre Pluton  
-**Formation** : OpenClassrooms AI Engineer 2026 - Projet OC6 MLOps  
-**Date** : Janvier 2026
+**Auteur** : Pierre Pluton
+**Formation** : OpenClassrooms AI Engineer 2026 - Projet OC6 MLOps
+**Date** : Février 2026
 
 **Licence** : MIT License
 
 ```
-© 2026 Pierre Pluton. Tous droits réservés pour OpenClassrooms.
+© 2026 Pierre Pluton.
 ```
 
 ---
 
-**Merci d'avoir reviewé ce projet !** 🎉  
-**Contact** : [pierre.pluton@outlook.fr | pierre@thoughtside.com
+**Contact** : pierre.pluton@outlook.fr | pierre@thoughtside.com

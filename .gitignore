@@ -34,5 +34,8 @@ models/*.joblib
 .clinerules/
 *.swp
 
+# Exports
+export_OC_6/
+
 # OS
 .DS_Store
