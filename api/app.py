@@ -1,4 +1,5 @@
-import csv
+import json
+import logging
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -8,6 +9,15 @@ from fastapi import FastAPI
 from api.config import Settings
 from api.predict import CreditScoringModel
 from api.schemas import HealthResponse, PredictionRequest, PredictionResponse
+
+# --- Logging structuré JSON ---
+logger = logging.getLogger("credit_scoring_api")
+logger.setLevel(logging.INFO)
+
+# Handler console avec format JSON
+_handler = logging.StreamHandler()
+_handler.setFormatter(logging.Formatter("%(message)s"))
+logger.addHandler(_handler)
 
 
 @asynccontextmanager
@@ -20,7 +30,13 @@ async def lifespan(app: FastAPI):
     # Créer le dossier de logs si nécessaire
     settings.PREDICTIONS_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
+    _log_event("api_startup", model_type=type(app.state.model.model).__name__,
+               n_features=len(app.state.model.feature_names),
+               threshold=app.state.model.threshold)
+
     yield
+
+    _log_event("api_shutdown")
 
 
 app = FastAPI(
@@ -80,31 +96,34 @@ def model_info():
     }
 
 
+def _log_event(event: str, **kwargs):
+    """Émet un log structuré JSON sur stdout."""
+    record = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "event": event,
+        **kwargs,
+    }
+    logger.info(json.dumps(record, default=str))
+
+
 def _log_prediction(
     client_id: int, probability: float, prediction: int, inference_time_ms: float
 ):
-    """Enregistre une prédiction dans le fichier de log CSV."""
+    """Enregistre une prédiction en JSONL (JSON Lines)."""
     log_path = app.state.settings.PREDICTIONS_LOG_PATH
-    file_exists = log_path.exists()
+    record = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "SK_ID_CURR": client_id,
+        "probability": round(probability, 6),
+        "prediction": prediction,
+        "inference_time_ms": inference_time_ms,
+    }
 
-    with open(log_path, "a", newline="") as f:
-        writer = csv.writer(f)
-        if not file_exists:
-            writer.writerow(
-                [
-                    "timestamp",
-                    "SK_ID_CURR",
-                    "probability",
-                    "prediction",
-                    "inference_time_ms",
-                ]
-            )
-        writer.writerow(
-            [
-                datetime.now(timezone.utc).isoformat(),
-                client_id,
-                round(probability, 6),
-                prediction,
-                inference_time_ms,
-            ]
-        )
+    with open(log_path, "a") as f:
+        f.write(json.dumps(record) + "\n")
+
+    # Log structuré sur stdout
+    _log_event("prediction", SK_ID_CURR=client_id,
+               probability=round(probability, 6),
+               prediction=prediction,
+               inference_time_ms=inference_time_ms)

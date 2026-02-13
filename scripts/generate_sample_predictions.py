@@ -1,19 +1,19 @@
 """Génère des données de prédiction réalistes pour tester le dashboard."""
 
-import csv
+import json
 import random
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import numpy as np
 
-OUTPUT = Path("monitoring/predictions_log.csv")
+OUTPUT = Path("monitoring/predictions_log.jsonl")
 N_PREDICTIONS = 500
 THRESHOLD = 0.494
 
 
 def main():
-    """Génère N_PREDICTIONS lignes de log réalistes."""
+    """Génère N_PREDICTIONS lignes de log réalistes au format JSON Lines."""
     rng = np.random.default_rng(42)
 
     # Simuler des probabilités réalistes (distribution bimodale)
@@ -49,10 +49,9 @@ def main():
     rows.sort(key=lambda r: r["timestamp"])
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    with open(OUTPUT, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=rows[0].keys())
-        writer.writeheader()
-        writer.writerows(rows)
+    with open(OUTPUT, "w") as f:
+        for row in rows:
+            f.write(json.dumps(row) + "\n")
 
     print(f"Generated {len(rows)} predictions → {OUTPUT}")
 

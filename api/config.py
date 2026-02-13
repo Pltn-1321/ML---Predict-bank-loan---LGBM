@@ -10,4 +10,4 @@ class Settings(BaseSettings):
     METADATA_PATH: Path = Path("artifacts/model_metadata.json")
     OPTIMAL_THRESHOLD: float = 0.494
     LOG_PREDICTIONS: bool = True
-    PREDICTIONS_LOG_PATH: Path = Path("monitoring/predictions_log.csv")
+    PREDICTIONS_LOG_PATH: Path = Path("monitoring/predictions_log.jsonl")
